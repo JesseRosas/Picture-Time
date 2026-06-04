@@ -11,15 +11,15 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
     if (!email) return res.status(400).json({ error: "Email required" });
 
     const token = crypto.randomBytes(32).toString("hex");
-
-    await Invite.create({ email, token, createdBy: req.user._id });
-
     const inviteLink = `${process.env.CLIENT_URL}/register?token=${token}`;
 
-    // Send the invite email automatically
+    // Send email FIRST — if this fails, nothing gets saved to DB
     await sendInviteEmail({ toEmail: email, inviteLink });
 
-    res.status(201).json({ ok: true, inviteLink });
+    // Only save to DB after email confirmed sent
+    await Invite.create({ email, token, createdBy: req.user._id });
+
+    res.status(201).json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -37,8 +37,7 @@ router.get("/", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
-// GET /api/invites/verify?token=xxx — anyone can check if a token is valid
-// Used by the register page before showing the form
+// GET /api/invites/verify?token=xxx
 router.get("/verify", async (req, res) => {
   const { token } = req.query;
   if (!token) return res.status(400).json({ error: "Token required" });
