@@ -44,12 +44,6 @@ Gallery page fetches /api/photos
   (Cloudinary URLs are CDN links — fast worldwide)
 ```
 
-Note: Unlike the Supabase version, Cloudinary URLs don't expire — they're permanent CDN links.
-Access control is enforced at the API level (JWT auth required to get the photo list),
-not at the URL level. For extra security you can enable Cloudinary's signed URLs feature.
-
----
-
 ## Project structure
 
 ```
