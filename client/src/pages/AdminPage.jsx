@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import NavBar from "../components/NavBar";
-import { uploadPhotos, sendInvite, getInvites, cancelInvite, getUsers, removeUser, changePassword } from "../lib/api";
+import { uploadPhotos, createUser, getUsers, removeUser, changePassword } from "../lib/api";
 
 const Section = ({ title, children }) => (
   <section className="card p-8">
@@ -20,13 +20,12 @@ export default function AdminPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadLog, setUploadLog] = useState([]);
 
-  // Invites
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviting, setInviting] = useState(false);
-  const [inviteResult, setInviteResult] = useState(null);
-  const [invites, setInvites] = useState([]);
+  // Create user
+  const [userForm, setUserForm] = useState({ name: "", email: "", password: "" });
+  const [creating, setCreating] = useState(false);
+  const [createResult, setCreateResult] = useState(null);
 
-  // Users
+  // Users list
   const [users, setUsers] = useState([]);
 
   // Password
@@ -35,7 +34,6 @@ export default function AdminPage() {
   const [pwResult, setPwResult] = useState(null);
 
   useEffect(() => {
-    getInvites().then(setInvites).catch(console.error);
     getUsers().then(setUsers).catch(console.error);
   }, []);
 
@@ -60,30 +58,20 @@ export default function AdminPage() {
     }
   }
 
-  // ── Invite ────────────────────────────────────────────────
-  async function handleInvite(e) {
+  // ── Create user ───────────────────────────────────────────
+  async function handleCreateUser(e) {
     e.preventDefault();
-    setInviting(true);
-    setInviteResult(null);
+    setCreating(true);
+    setCreateResult(null);
     try {
-      await sendInvite(inviteEmail);
-      setInviteResult({ ok: true });
-      setInviteEmail("");
-      getInvites().then(setInvites);
+      const newUser = await createUser(userForm);
+      setUsers(prev => [...prev, newUser]);
+      setCreateResult({ ok: true, name: newUser.name });
+      setUserForm({ name: "", email: "", password: "" });
     } catch (err) {
-      setInviteResult({ error: err.message });
+      setCreateResult({ error: err.message });
     } finally {
-      setInviting(false);
-    }
-  }
-
-  async function handleCancelInvite(id) {
-    if (!window.confirm("Cancel this invite?")) return;
-    try {
-      await cancelInvite(id);
-      setInvites(prev => prev.filter(i => i._id !== id));
-    } catch (err) {
-      alert(err.message);
+      setCreating(false);
     }
   }
 
@@ -160,44 +148,42 @@ export default function AdminPage() {
           </div>
         </Section>
 
-        {/* ── Invites ── */}
-        <Section title="Invite Guests">
-          <form onSubmit={handleInvite} className="flex gap-3 mb-4">
-            <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
-              className="input-field flex-1" placeholder="guest@example.com" required />
-            <button type="submit" disabled={inviting} className="btn-primary whitespace-nowrap">
-              {inviting ? "Sending…" : "Send Invite"}
+        {/* ── Add Guest ── */}
+        <Section title="Add Guest">
+          <form onSubmit={handleCreateUser} className="space-y-4 max-w-sm">
+            <p className="text-stone-500 text-sm">
+              Create an account for your guest. Share their email and password with them directly — they can change their password after logging in.
+            </p>
+            {[
+              { key: "name", label: "Full Name", type: "text", placeholder: "Jane Smith" },
+              { key: "email", label: "Email", type: "email", placeholder: "jane@example.com" },
+              { key: "password", label: "Temporary Password", type: "text", placeholder: "Min. 8 characters" },
+            ].map(({ key, label, type, placeholder }) => (
+              <div key={key}>
+                <label className="block text-xs text-stone-400 tracking-widest uppercase mb-2">{label}</label>
+                <input
+                  type={type}
+                  value={userForm[key]}
+                  onChange={e => setUserForm(f => ({ ...f, [key]: e.target.value }))}
+                  className="input-field"
+                  placeholder={placeholder}
+                  minLength={key === "password" ? 8 : undefined}
+                  required
+                />
+              </div>
+            ))}
+
+            {createResult?.ok && (
+              <p className="text-green-400 text-sm">✓ Account created for {createResult.name}. Share their login details with them.</p>
+            )}
+            {createResult?.error && (
+              <p className="text-red-400 text-sm">✗ {createResult.error}</p>
+            )}
+
+            <button type="submit" disabled={creating} className="btn-primary">
+              {creating ? "Creating…" : "Create Account"}
             </button>
           </form>
-          {inviteResult?.ok && <p className="text-green-400 text-sm mb-4">✓ Invite email sent.</p>}
-          {inviteResult?.error && <p className="text-red-400 text-sm mb-4">✗ {inviteResult.error}</p>}
-
-          {invites.length > 0 && (
-            <div className="mt-4">
-              <h3 className="text-xs text-stone-500 tracking-widest uppercase mb-3">Sent Invites</h3>
-              <div className="space-y-1">
-                {invites.map(inv => (
-                  <div key={inv._id} className="flex items-center justify-between py-3 border-b border-stone-800">
-                    <div>
-                      <p className="text-stone-200 text-sm">{inv.email}</p>
-                      <p className="text-stone-600 text-xs mt-0.5">{new Date(inv.createdAt).toLocaleDateString()}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`text-xs px-2 py-1 border ${inv.usedAt ? "border-stone-700 text-stone-500" : "border-gold-400/40 text-gold-400"}`}>
-                        {inv.usedAt ? "Accepted" : "Pending"}
-                      </span>
-                      {!inv.usedAt && (
-                        <button onClick={() => handleCancelInvite(inv._id)}
-                          className="text-xs text-stone-600 hover:text-red-400 transition-colors">
-                          Cancel
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </Section>
 
         {/* ── Users ── */}
@@ -211,13 +197,17 @@ export default function AdminPage() {
                   <div>
                     <p className="text-stone-200 text-sm flex items-center gap-2">
                       {u.name}
-                      {u.isAdmin && <span className="text-xs border border-gold-400/40 text-gold-400 px-1.5 py-0.5">Admin</span>}
+                      {u.isAdmin && (
+                        <span className="text-xs border border-gold-400/40 text-gold-400 px-1.5 py-0.5">Admin</span>
+                      )}
                     </p>
                     <p className="text-stone-500 text-xs mt-0.5">{u.email}</p>
                   </div>
                   {!u.isAdmin && (
-                    <button onClick={() => handleRemoveUser(u._id, u.name)}
-                      className="text-xs text-stone-600 hover:text-red-400 transition-colors">
+                    <button
+                      onClick={() => handleRemoveUser(u._id, u.name)}
+                      className="text-xs text-stone-600 hover:text-red-400 transition-colors"
+                    >
                       Remove
                     </button>
                   )}

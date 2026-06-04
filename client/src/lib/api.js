@@ -25,16 +25,26 @@ async function request(path, options = {}) {
 export const login = (email, password) =>
   request("/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
 
-export const register = (data) =>
-  request("/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
-
 export const getMe = () => request("/auth/me");
+
+// Users
+export const createUser = (data) =>
+  request("/auth/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+
+export const getUsers = () => request("/auth/users");
+
+export const removeUser = (id) =>
+  request(`/auth/users/${id}`, { method: "DELETE" });
+
+// Password
+export const changePassword = (currentPassword, newPassword) =>
+  request("/auth/password", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword, newPassword }) });
 
 // Photos
 export const getPhotos = () => request("/photos");
 
 export const uploadPhotos = (formData) =>
-  request("/photos", { method: "POST", body: formData }); // no Content-Type header — browser sets multipart boundary
+  request("/photos", { method: "POST", body: formData });
 
 export const deletePhoto = (id) =>
   request(`/photos/${id}`, { method: "DELETE" });
@@ -55,25 +65,3 @@ export const postComment = (photoId, text) =>
 
 export const deleteComment = (photoId, commentId) =>
   request(`/photos/${photoId}/comments/${commentId}`, { method: "DELETE" });
-
-// Invites
-export const verifyInviteToken = (token) =>
-  request(`/invites/verify?token=${token}`);
-
-export const sendInvite = (email) =>
-  request("/invites", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
-
-export const getInvites = () => request("/invites");
-
-export const cancelInvite = (id) =>
-  request(`/invites/${id}`, { method: "DELETE" });
-
-// Users
-export const getUsers = () => request("/auth/users");
-
-export const removeUser = (id) =>
-  request(`/auth/users/${id}`, { method: "DELETE" });
-
-// Password
-export const changePassword = (currentPassword, newPassword) =>
-  request("/auth/password", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword, newPassword }) });
