@@ -71,7 +71,7 @@ router.put("/password", requireAuth, async (req, res) => {
     if (!valid) return res.status(401).json({ error: "Current password is incorrect" });
 
     user.password = newPassword;
-    await user.save(); // pre-save hook hashes it
+    await user.save();
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -94,7 +94,13 @@ router.delete("/users/:id", requireAuth, requireAdmin, async (req, res) => {
     if (req.params.id === req.user._id.toString()) {
       return res.status(400).json({ error: "You cannot delete your own account" });
     }
-    await User.findByIdAndDelete(req.params.id);
+
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // Remove their accepted invite entry so the invite list stays clean
+    await Invite.findOneAndDelete({ email: user.email });
+
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -102,4 +108,3 @@ router.delete("/users/:id", requireAuth, requireAdmin, async (req, res) => {
 });
 
 module.exports = router;
-
